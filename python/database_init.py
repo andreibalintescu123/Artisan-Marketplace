@@ -1,7 +1,14 @@
 import sqlite3
 
-def initialize_sqlite():
-    connection = sqlite3.connect("artisans_platform.db")  # Creates the database file if not exists
+DB_PATH = "D:/JavaProjects/Laboratories/ArtisanMarketplace/python/artisan_marketplace.db"
+
+def create_connection():
+    """Create a connection to the SQLite database."""
+    conn = sqlite3.connect(DB_PATH)
+    return conn
+
+def create_tables():
+    connection = create_connection()  # Creates the database file if not exists
     cursor = connection.cursor()
 
     # Create tables
@@ -47,4 +54,4 @@ def initialize_sqlite():
 
 
 if __name__ == "__main__":
-    initialize_sqlite()
+    create_tables()
