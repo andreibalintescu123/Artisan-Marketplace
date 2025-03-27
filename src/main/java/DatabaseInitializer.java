@@ -4,42 +4,51 @@ import java.sql.SQLException;
 import java.sql.Statement;
 
 public class DatabaseInitializer {
-    private static final String URL = "jdbc:postgresql://localhost:5432/postgres"; // Adjust if needed
-    private static final String USER = "postgres";
-    private static final String PASSWORD = "andrei123";
+    // Remove the extra quotes and fix the backslashes
+    private static final String URL = "jdbc:sqlserver://DESKTOP-ANDREI-B\\SQLEXPRESS;databaseName=Artisan-Marketplace;integratedSecurity=true;";
+
+    static {
+        try {
+            // Explicitly load the SQL Server JDBC driver
+            Class.forName("com.microsoft.sqlserver.jdbc.SQLServerDriver");
+        } catch (ClassNotFoundException e) {
+            System.err.println("SQL Server JDBC Driver not found!");
+            e.printStackTrace();
+        }
+    }
 
     public static void main(String[] args) {
-        try (Connection conn = DriverManager.getConnection(URL, USER, PASSWORD);
+        try (Connection conn = DriverManager.getConnection(URL);
              Statement stmt = conn.createStatement()) {
 
-            // Create tables
+            // SQL Server compatible syntax
             String createTablesSQL = """
                 CREATE TABLE IF NOT EXISTS Artisans (
-                    ArtisanID SERIAL PRIMARY KEY,
-                    Name VARCHAR(255) NOT NULL,
-                    Location VARCHAR(255) NOT NULL,
-                    Speciality VARCHAR(255) NOT NULL
+                    ArtisanID INT IDENTITY(1,1) PRIMARY KEY,
+                    Name NVARCHAR(255) NOT NULL,
+                    Location NVARCHAR(255) NOT NULL,
+                    Speciality NVARCHAR(255) NOT NULL
                 );
-
-                CREATE TABLE IF NOT EXISTS Products (
-                    ProductID SERIAL PRIMARY KEY,
+                
+                CREATE TABLE IF NOT EXISTS Products(
+                    ProductID INT IDENTITY(1,1) PRIMARY KEY,
                     ArtisanID INT NOT NULL,
-                    Name VARCHAR(255) NOT NULL,
-                    Description TEXT,
+                    Name NVARCHAR(255) NOT NULL,
+                    Description NVARCHAR(255),
                     Price DECIMAL(10,2) NOT NULL,
                     StockQuantity INT NOT NULL,
                     FOREIGN KEY (ArtisanID) REFERENCES Artisans(ArtisanID) ON DELETE CASCADE
                 );
 
                 CREATE TABLE IF NOT EXISTS Orders (
-                    OrderID SERIAL PRIMARY KEY,
-                    CustomerName VARCHAR(255) NOT NULL,
-                    OrderDate TIMESTAMP NOT NULL DEFAULT NOW(),
+                    OrderID INT IDENTITY(1,1) PRIMARY KEY,
+                    CustomerName NVARCHAR(255) NOT NULL,
+                    OrderDate DATETIME NOT NULL DEFAULT DATETIME(),
                     TotalAmount DECIMAL(10,2) NOT NULL
                 );
-
+                
                 CREATE TABLE IF NOT EXISTS OrderItems (
-                    OrderItemID SERIAL PRIMARY KEY,
+                    OrderItemID INT IDENTITY(1,1) PRIMARY KEY,
                     OrderID INT NOT NULL,
                     ProductID INT NOT NULL,
                     Quantity INT NOT NULL,
@@ -50,9 +59,10 @@ public class DatabaseInitializer {
             """;
 
             stmt.executeUpdate(createTablesSQL);
-            System.out.println("PostgreSQL database initialized successfully.");
+            System.out.println("Tables created successfully in Artisan-Marketplace database.");
 
         } catch (SQLException e) {
+            System.err.println("Error initializing database:");
             e.printStackTrace();
         }
     }
