@@ -1,13 +1,13 @@
 import tkinter as tk
-from tkinter import ttk, messagebox
-from CRUD.artisan import *
-from CRUD.product import *
+from tkinter import ttk, messagebox, scrolledtext
+from python.CRUD.artisan import *
+from python.CRUD.product import *
 from python.database_init import sqlite_connection, postgres_connection, microsoft_sql_connection
 
 # Create the main window
 root = tk.Tk()
 root.title("Artisan Marketplace")
-root.geometry("1250x400")
+root.geometry("1250x500")
 
 # Create a Notebook (Tabs)
 notebook = ttk.Notebook(root)
@@ -38,6 +38,81 @@ def submit_artisan():
         messagebox.showwarning("Warning", "All fields are required!")
 
 
+# View Artisans Function
+def view_artisans():
+    # Fetch all artisans
+    artisans = get_artisans(connection=sqlite_connection())
+
+    # Create a new window for detailed view
+    view_window = tk.Toplevel(root)
+    view_window.title("Artisans Details")
+    view_window.geometry("800x500")
+
+    # Create a text widget to display artisan details
+    artisan_details = scrolledtext.ScrolledText(view_window, wrap=tk.WORD)
+    artisan_details.pack(padx=10, pady=10, fill=tk.BOTH, expand=True)
+
+    # Format and insert artisan details
+    artisan_details.insert(tk.END, "ARTISANS DETAILS\n")
+    artisan_details.insert(tk.END, "=" * 50 + "\n\n")
+
+    for artisan in artisans:
+        artisan_details.insert(tk.END, f"Artisan ID: {artisan[0]}\n")
+        artisan_details.insert(tk.END, f"Name: {artisan[1]}\n")
+        artisan_details.insert(tk.END, f"Location: {artisan[2]}\n")
+        artisan_details.insert(tk.END, f"Speciality: {artisan[3]}\n")
+        artisan_details.insert(tk.END, "-" * 50 + "\n\n")
+
+    # Make the text widget read-only
+    artisan_details.config(state=tk.DISABLED)
+
+
+def update_selected_artisan():
+    selected_item = artisan_tree.selection()
+    if selected_item:
+        # Get the current values of the selected artisan
+        current_values = artisan_tree.item(selected_item, "values")
+        artisan_id = current_values[0]
+
+        # Open update dialog
+        update_window = tk.Toplevel(root)
+        update_window.title("Update Artisan")
+        update_window.geometry("300x250")
+
+        # Variables for update
+        update_name_var = tk.StringVar(value=current_values[1])
+        update_location_var = tk.StringVar(value=current_values[2])
+        update_speciality_var = tk.StringVar(value=current_values[3])
+
+        # Create update form
+        ttk.Label(update_window, text="Name:").pack(pady=(10, 0))
+        ttk.Entry(update_window, textvariable=update_name_var, width=30).pack(pady=5)
+
+        ttk.Label(update_window, text="Location:").pack(pady=(10, 0))
+        ttk.Entry(update_window, textvariable=update_location_var, width=30).pack(pady=5)
+
+        ttk.Label(update_window, text="Speciality:").pack(pady=(10, 0))
+        ttk.Entry(update_window, textvariable=update_speciality_var, width=30).pack(pady=5)
+
+        def save_update():
+            name = update_name_var.get()
+            location = update_location_var.get()
+            speciality = update_speciality_var.get()
+
+            if name and location and speciality:
+                # Reopen connection for update
+                update_artisan(artisan_id, name, location, speciality, connection=sqlite_connection())
+                messagebox.showinfo("Success", "Artisan updated successfully!")
+                update_window.destroy()
+                refresh_artisan_table()
+            else:
+                messagebox.showwarning("Warning", "All fields are required!")
+
+        ttk.Button(update_window, text="Save Update", command=save_update).pack(pady=10)
+    else:
+        messagebox.showwarning("Warning", "Please select an artisan to update!")
+
+
 def delete_selected_artisan():
     selected_item = artisan_tree.selection()
     if selected_item:
@@ -65,9 +140,11 @@ ttk.Entry(artisan_form_frame, textvariable=artisan_location_var, width=30).grid(
 ttk.Label(artisan_form_frame, text="Speciality:").grid(row=2, column=0, padx=5, pady=5, sticky="w")
 ttk.Entry(artisan_form_frame, textvariable=artisan_speciality_var, width=30).grid(row=2, column=1, padx=5, pady=5)
 
-ttk.Button(artisan_form_frame, text="Add Artisan", command=submit_artisan).grid(row=3, columnspan=2, pady=10)
-ttk.Button(artisan_form_frame, text="Delete Artisan", command=delete_selected_artisan).grid(row=3, column=4,
-                                                                                            columnspan=2, pady=10)
+# Buttons for Artisan operations
+ttk.Button(artisan_form_frame, text="Add Artisan", command=submit_artisan).grid(row=3, column=0, pady=10)
+ttk.Button(artisan_form_frame, text="Update Artisan", command=update_selected_artisan).grid(row=3, column=2, pady=10)
+ttk.Button(artisan_form_frame, text="Delete Artisan", command=delete_selected_artisan).grid(row=4, column=1, pady=10)
+ttk.Button(artisan_form_frame, text="View Artisans", command=view_artisans).grid(row=3, column=1, pady=10)
 # ARTISAN TABLE
 artisan_tree = ttk.Treeview(frame_artisans, columns=("ID", "Name", "Location", "Speciality"), show="headings")
 artisan_tree.heading("ID", text="ID")
@@ -107,6 +184,138 @@ def submit_product():
         messagebox.showwarning("Warning", "All fields are required!")
 
 
+# View Products Function
+def view_products():
+    # Fetch all products
+    products = get_products(connection=sqlite_connection())
+
+    # Create a new window for detailed view
+    view_window = tk.Toplevel(root)
+    view_window.title("Products Details")
+    view_window.geometry("900x600")
+
+    # Frame for sorting options
+    sort_frame = ttk.Frame(view_window)
+    sort_frame.pack(pady=10, padx=10, fill='x')
+
+    # Sorting Label and Dropdown
+    ttk.Label(sort_frame, text="Sort by Stock:").pack(side=tk.LEFT, padx=(0,10))
+
+    # Sorting variable and options
+    sort_var = tk.StringVar(value="Default")
+    sort_options = ["Default", "Low to High", "High to Low"]
+    sort_dropdown = ttk.Combobox(sort_frame, textvariable=sort_var, values=sort_options, width=15, state="readonly")
+    sort_dropdown.pack(side=tk.LEFT, padx=(0,10))
+
+    # Treeview for Products
+    product_tree = ttk.Treeview(view_window, columns=(
+        "Product ID", "Artisan ID", "Name", "Description", "Price", "Stock"
+    ), show="headings")
+
+    # Define headings
+    product_tree.heading("Product ID", text="Product ID")
+    product_tree.heading("Artisan ID", text="Artisan ID")
+    product_tree.heading("Name", text="Name")
+    product_tree.heading("Description", text="Description")
+    product_tree.heading("Price", text="Price")
+    product_tree.heading("Stock", text="Stock Quantity")
+
+    # Set column widths
+    product_tree.column("Product ID", width=80, anchor='center')
+    product_tree.column("Artisan ID", width=80, anchor='center')
+    product_tree.column("Name", width=150)
+    product_tree.column("Description", width=200)
+    product_tree.column("Price", width=100, anchor='e')
+    product_tree.column("Stock", width=100, anchor='center')
+
+    # Function to populate and sort products
+    def populate_products(event=None):
+        # Clear existing items
+        for i in product_tree.get_children():
+            product_tree.delete(i)
+
+        # Sort products based on selected option
+        sorted_products = products.copy()
+        if sort_var.get() == "Low to High":
+            sorted_products.sort(key=lambda x: x[5])  # Sort by stock quantity
+        elif sort_var.get() == "High to Low":
+            sorted_products.sort(key=lambda x: x[5], reverse=True)
+
+        # Insert products into treeview
+        for product in sorted_products:
+            product_tree.insert("", "end", values=product)
+
+    # Bind sorting dropdown to populate function
+    sort_dropdown.bind("<<ComboboxSelected>>", populate_products)
+
+    # Initial population
+    populate_products()
+
+    # Add scrollbar
+    scrollbar = ttk.Scrollbar(view_window, orient=tk.VERTICAL, command=product_tree.yview)
+    product_tree.configure(yscroll=scrollbar.set)
+
+    # Pack treeview and scrollbar
+    product_tree.pack(padx=10, pady=10, fill=tk.BOTH, expand=True)
+    scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+
+
+def update_selected_product():
+    selected_item = product_tree.selection()
+    if selected_item:
+        # Get the current values of the selected product
+        current_values = product_tree.item(selected_item, "values")
+        product_id = current_values[0]
+
+        # Open update dialog
+        update_window = tk.Toplevel(root)
+        update_window.title("Update Product")
+        update_window.geometry("300x350")
+
+        # Variables for update
+        update_artisan_var = tk.StringVar(value=current_values[1])
+        update_name_var = tk.StringVar(value=current_values[2])
+        update_description_var = tk.StringVar(value=current_values[3])
+        update_price_var = tk.StringVar(value=current_values[4])
+        update_stock_var = tk.StringVar(value=current_values[5])
+
+        # Create update form
+        ttk.Label(update_window, text="Artisan ID:").pack(pady=(10, 0))
+        ttk.Entry(update_window, textvariable=update_artisan_var, width=30).pack(pady=5)
+
+        ttk.Label(update_window, text="Name:").pack(pady=(10, 0))
+        ttk.Entry(update_window, textvariable=update_name_var, width=30).pack(pady=5)
+
+        ttk.Label(update_window, text="Description:").pack(pady=(10, 0))
+        ttk.Entry(update_window, textvariable=update_description_var, width=30).pack(pady=5)
+
+        ttk.Label(update_window, text="Price:").pack(pady=(10, 0))
+        ttk.Entry(update_window, textvariable=update_price_var, width=30).pack(pady=5)
+
+        ttk.Label(update_window, text="Stock:").pack(pady=(10, 0))
+        ttk.Entry(update_window, textvariable=update_stock_var, width=30).pack(pady=5)
+
+        def save_update():
+            artisan_id = update_artisan_var.get()
+            name = update_name_var.get()
+            description = update_description_var.get()
+            price = update_price_var.get()
+            stock = update_stock_var.get()
+
+            if artisan_id and name and price and stock:
+                # Reopen connection for update
+                update_product(product_id, name, description, float(price), int(stock), connection=sqlite_connection())
+                messagebox.showinfo("Success", "Product updated successfully!")
+                update_window.destroy()
+                refresh_product_table()
+            else:
+                messagebox.showwarning("Warning", "All fields are required!")
+
+        ttk.Button(update_window, text="Save Update", command=save_update).pack(pady=10)
+    else:
+        messagebox.showwarning("Warning", "Please select a product to update!")
+
+
 def delete_selected_product():
     selected_item = product_tree.selection()
     if selected_item:
@@ -142,10 +351,11 @@ ttk.Entry(product_form_frame, textvariable=product_price_var, width=30).grid(row
 ttk.Label(product_form_frame, text="Stock:").grid(row=4, column=0, padx=5, pady=5, sticky="w")
 ttk.Entry(product_form_frame, textvariable=product_stock_var, width=30).grid(row=4, column=1, padx=5, pady=5)
 
-ttk.Button(product_form_frame, text="Add Product", command=submit_product).grid(row=5, columnspan=2, pady=10)
-ttk.Button(product_form_frame, text="Delete Product", command=delete_selected_product).grid(row=5, column=3,
-                                                                                            columnspan=2, pady=10)
-
+# Buttons for Product operations
+ttk.Button(product_form_frame, text="Add Product", command=submit_product).grid(row=5, column=0, pady=10)
+ttk.Button(product_form_frame, text="Update Product", command=update_selected_product).grid(row=5, column=2, pady=10)
+ttk.Button(product_form_frame, text="Delete Product", command=delete_selected_product).grid(row=6, column=1, pady=10)
+ttk.Button(product_form_frame, text="View Products", command=view_products).grid(row=5, column=1, pady=10)
 # PRODUCT TABLE
 product_tree = ttk.Treeview(frame_products, columns=("ID", "ArtisanID", "Name", "Description", "Price", "Stock"),
                             show="headings")
