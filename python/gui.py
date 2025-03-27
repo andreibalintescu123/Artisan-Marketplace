@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 from CRUD.artisan import *
 from CRUD.product import *
+from python.database_init import sqlite_connection, postgres_connection, microsoft_sql_connection
 
 # Create the main window
 root = tk.Tk()
@@ -19,14 +20,15 @@ frame_products = ttk.Frame(notebook)
 notebook.add(frame_artisans, text="Artisans")
 notebook.add(frame_products, text="Products")
 
-### ARTISAN FORM ###
+
+# ARTISAN FORM
 def submit_artisan():
     name = artisan_name_var.get()
     location = artisan_location_var.get()
     speciality = artisan_speciality_var.get()
 
     if name and location and speciality:
-        add_artisan(name, location, speciality)
+        add_artisan(name, location, speciality, connection=sqlite_connection())
         messagebox.showinfo("Success", "Artisan added successfully!")
         artisan_name_var.set("")
         artisan_location_var.set("")
@@ -34,6 +36,18 @@ def submit_artisan():
         refresh_artisan_table()
     else:
         messagebox.showwarning("Warning", "All fields are required!")
+
+
+def delete_selected_artisan():
+    selected_item = artisan_tree.selection()
+    if selected_item:
+        artisan_id = artisan_tree.item(selected_item, "values")[0]
+        delete_artisan(artisan_id, connection=sqlite_connection())
+        messagebox.showinfo("Success", "Artisan deleted successfully!")
+        refresh_artisan_table()
+    else:
+        messagebox.showwarning("Warning", "Please select an artisan to delete!")
+
 
 artisan_form_frame = ttk.Frame(frame_artisans)
 artisan_form_frame.pack(pady=10, padx=10, fill="x")
@@ -52,8 +66,9 @@ ttk.Label(artisan_form_frame, text="Speciality:").grid(row=2, column=0, padx=5, 
 ttk.Entry(artisan_form_frame, textvariable=artisan_speciality_var, width=30).grid(row=2, column=1, padx=5, pady=5)
 
 ttk.Button(artisan_form_frame, text="Add Artisan", command=submit_artisan).grid(row=3, columnspan=2, pady=10)
-
-### ARTISAN TABLE ###
+ttk.Button(artisan_form_frame, text="Delete Artisan", command=delete_selected_artisan).grid(row=3, column=4,
+                                                                                            columnspan=2, pady=10)
+# ARTISAN TABLE
 artisan_tree = ttk.Treeview(frame_artisans, columns=("ID", "Name", "Location", "Speciality"), show="headings")
 artisan_tree.heading("ID", text="ID")
 artisan_tree.heading("Name", text="Name")
@@ -61,15 +76,18 @@ artisan_tree.heading("Location", text="Location")
 artisan_tree.heading("Speciality", text="Speciality")
 artisan_tree.pack(fill="both", expand=True, padx=10, pady=10)
 
+
 def refresh_artisan_table():
     for row in artisan_tree.get_children():
         artisan_tree.delete(row)
-    for artisan in get_artisans():
+    for artisan in get_artisans(connection=sqlite_connection()):
         artisan_tree.insert("", "end", values=artisan)
+
 
 refresh_artisan_table()
 
-### PRODUCT FORM ###
+
+# PRODUCT FORM
 def submit_product():
     artisan_id = product_artisan_var.get()
     name = product_name_var.get()
@@ -78,7 +96,7 @@ def submit_product():
     stock = product_stock_var.get()
 
     if artisan_id and name and price and stock:
-        add_product(artisan_id, name, description, float(price), int(stock))
+        add_product(artisan_id, name, description, float(price), int(stock), connection=sqlite_connection())
         messagebox.showinfo("Success", "Product added successfully!")
         product_name_var.set("")
         product_description_var.set("")
@@ -88,15 +106,17 @@ def submit_product():
     else:
         messagebox.showwarning("Warning", "All fields are required!")
 
+
 def delete_selected_product():
     selected_item = product_tree.selection()
     if selected_item:
         product_id = product_tree.item(selected_item, "values")[0]
-        delete_product(product_id)
+        delete_product(product_id, connection=sqlite_connection())
         messagebox.showinfo("Success", "Product deleted successfully!")
         refresh_product_table()
     else:
         messagebox.showwarning("Warning", "Please select a product to delete!")
+
 
 product_form_frame = ttk.Frame(frame_products)
 product_form_frame.pack(pady=10, padx=10, fill="x")
@@ -123,10 +143,12 @@ ttk.Label(product_form_frame, text="Stock:").grid(row=4, column=0, padx=5, pady=
 ttk.Entry(product_form_frame, textvariable=product_stock_var, width=30).grid(row=4, column=1, padx=5, pady=5)
 
 ttk.Button(product_form_frame, text="Add Product", command=submit_product).grid(row=5, columnspan=2, pady=10)
-ttk.Button(product_form_frame, text="Delete Product", command=delete_selected_product).grid(row=5, column=3, columnspan=2, pady=10)
+ttk.Button(product_form_frame, text="Delete Product", command=delete_selected_product).grid(row=5, column=3,
+                                                                                            columnspan=2, pady=10)
 
-### PRODUCT TABLE ###
-product_tree = ttk.Treeview(frame_products, columns=("ID", "ArtisanID", "Name", "Description", "Price", "Stock"), show="headings")
+# PRODUCT TABLE
+product_tree = ttk.Treeview(frame_products, columns=("ID", "ArtisanID", "Name", "Description", "Price", "Stock"),
+                            show="headings")
 product_tree.heading("ID", text="ID")
 product_tree.heading("ArtisanID", text="Artisan ID")
 product_tree.heading("Name", text="Name")
@@ -135,14 +157,15 @@ product_tree.heading("Price", text="Price")
 product_tree.heading("Stock", text="Stock")
 product_tree.pack(fill="both", expand=True, padx=10, pady=10)
 
+
 def refresh_product_table():
     for row in product_tree.get_children():
         product_tree.delete(row)
-    for product in get_products():
+    for product in get_products(connection=sqlite_connection()):
         product_tree.insert("", "end", values=product)
 
-refresh_product_table()
 
+refresh_product_table()
 
 # Run the main loop (placed at the very end)
 root.mainloop()
